@@ -38,24 +38,21 @@ namespace StockQuoteAlert
             {
                 StockQuote newQuote = await quoteApiClient.GetStockQuoteAsync(asset);
                 Console.WriteLine("{0}: {1}", newQuote.MarkedAt, newQuote.MarketPrice);
-                if (newQuote.MarketPrice != currentQuote)
+
+                if (newQuote.MarketPrice <= lowThreshold && !(currentQuote <= lowThreshold))
                 {
-
-                    if (newQuote.MarketPrice <= lowThreshold && !(currentQuote <= lowThreshold))
-                    {
-                        MailClient mailClient = new MailClient();
-                        AlertMail email = SetupBuyEmail(newQuote, lowThreshold);
-                        mailClient.SendEmail(email);
-                    }
-                    else if (newQuote.MarketPrice >= highThreshold && !(currentQuote >= highThreshold))
-                    {
-                        MailClient mailClient = new MailClient();
-                        AlertMail email = SetupSellEmail(newQuote, highThreshold);
-                        mailClient.SendEmail(email);
-                    }
-
-                    currentQuote = newQuote.MarketPrice;
+                    MailClient mailClient = new MailClient();
+                    AlertMail email = SetupBuyEmail(newQuote, lowThreshold);
+                    mailClient.SendEmail(email);
                 }
+                else if (newQuote.MarketPrice >= highThreshold && !(currentQuote >= highThreshold))
+                {
+                    MailClient mailClient = new MailClient();
+                    AlertMail email = SetupSellEmail(newQuote, highThreshold);
+                    mailClient.SendEmail(email);
+                }
+
+                currentQuote = newQuote.MarketPrice;
 
                 double nextCheck = Math.Max(0, (newQuote.MarkedAt.AddMinutes(2) - DateTime.Now).TotalMilliseconds);
                 Thread.Sleep((int)nextCheck);
@@ -102,14 +99,13 @@ namespace StockQuoteAlert
             public string Asset { get; set; }
             public decimal LowThreshold { get; set; }
             public decimal HighThreshold { get; set; }
-            public bool Verbose { get; set; }
         }
 
         private static ParsedArguments ParseArgs(string[] args)
         {
-            if (args.Length < 3 || args.Length > 4)
+            if (args.Length < 3)
             {
-                throw new ArgumentException("Invalid number of arguments. Usage: StockQuoteAlert <asset> <low> <high> [verbose]");
+                throw new ArgumentException("Invalid number of arguments. Usage: StockQuoteAlert <asset> <low> <high>");
             }
 
             decimal lowThreshold, highThreshold;
@@ -130,14 +126,11 @@ namespace StockQuoteAlert
                 throw new ArgumentException("Low and high thresholds must be valid decimal numbers.");
             }
 
-            bool verbose = args.Length == 4 && args[3] == "verbose";
-
             return new ParsedArguments
             {
                 Asset = asset,
                 LowThreshold = lowThreshold,
-                HighThreshold = highThreshold,
-                Verbose = verbose
+                HighThreshold = highThreshold
             };
         }
     }
