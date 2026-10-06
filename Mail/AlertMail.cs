@@ -12,6 +12,7 @@ namespace StockQuoteAlert.Mail
 
         private readonly MimeMessage message;
         private string receiverName = string.Empty;
+        private string senderName = string.Empty;
 
         public AlertMail()
         {
@@ -21,6 +22,7 @@ namespace StockQuoteAlert.Mail
         public void SetFrom(string fromName, string fromAddress)
         {
             this.message.From.Add(new MailboxAddress(fromName, fromAddress));
+            this.senderName = fromName;
         }
 
         public void SetTo(string toName, string toAddress)
@@ -41,12 +43,15 @@ namespace StockQuoteAlert.Mail
 
         private void SetPriceAlert(AlertType alertType, StockQuote record, decimal alertThreshold)
         {
-            this.message.Subject = $"Alerta de preço { (alertType == AlertType.HighPrice ? "alto" : "baixo") }: " + record.Asset;
+            this.message.Subject = $"Alerta de preço {(alertType == AlertType.HighPrice ? "alto" : "baixo")}: " + record.Asset;
             this.message.Body = new TextPart("plain")
             {
                 Text = $"Olá {this.receiverName}, \n\n" +
-                $"O preço de {record.Asset} atingiu {record.MarketPrice:C} às {record.MarkedAt.ToLongTimeString()}. " +
-                $"O limite de alerta é {alertThreshold:C}."
+                $"Recomendação de {(alertType == AlertType.HighPrice ? "venda" : "compra")}: " +
+                $"o preço de {record.Asset} atingiu {record.MarketPrice:C} às {record.MarkedAt:T}. " +
+                $"O limite de alerta é {alertThreshold:C}. \n\n" +
+                $"Atenciosamente, \n" +
+                $"{this.senderName}"
             };
         }
 
