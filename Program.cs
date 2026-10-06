@@ -11,53 +11,90 @@ namespace StockQuoteAlert
     {
         static async Task Main(string[] args)
         {
-            ParsedArguments parsedArgs = parseArgs(args);
-            string asset = parsedArgs.Asset;
-            decimal lowThreshold = parsedArgs.LowThreshold;
-            decimal highThreshold = parsedArgs.HighThreshold;
+            try
+            {
+                ParsedArguments parsedArgs = ParseArgs(args);
+                string asset = parsedArgs.Asset;
+                decimal lowThreshold = parsedArgs.LowThreshold;
+                decimal highThreshold = parsedArgs.HighThreshold;
 
-            Console.WriteLine("Monitoring stock quote for asset {0} with thresholds {1} - {2}", 
-                asset, lowThreshold, highThreshold);
+                Console.WriteLine("Monitoring stock quote for asset {0} with thresholds {1} - {2}",
+                    asset, lowThreshold, highThreshold);
 
-            NameValueCollection mailInfoConfig = System.Configuration.
-                ConfigurationManager.GetSection("mailInfo") as NameValueCollection;
+                await RunApiLoop(asset, lowThreshold, highThreshold);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
 
-            AlertMail message = new AlertMail();
-            message.SetFrom(
-                mailInfoConfig["fromName"],
-                mailInfoConfig["fromAddress"]
-            );
-            message.SetTo(
-                mailInfoConfig["toName"],
-                mailInfoConfig["toAddress"]
-            );
-
-            MailClient mailClient = new MailClient();
-
-            QuoteApiClient client = new QuoteApiClient();
+        private static async Task RunApiLoop(string asset, decimal lowThreshold, decimal highThreshold)
+        {
+            QuoteApiClient quoteApiClient = new QuoteApiClient();
             decimal? currentQuote = null;
 
             while (true)
             {
-                StockQuote newQuote = await client.GetStockQuoteAsync(asset);
+                StockQuote newQuote = await quoteApiClient.GetStockQuoteAsync(asset);
+                Console.WriteLine("{0}: {1}", newQuote.MarkedAt, newQuote.MarketPrice);
                 if (newQuote.MarketPrice != currentQuote)
                 {
-                    Console.WriteLine("{0}: {1}", newQuote.MarkedAt, newQuote.MarketPrice);
 
                     if (newQuote.MarketPrice <= lowThreshold && !(currentQuote <= lowThreshold))
                     {
-                        message.SetLowPriceAlert(newQuote, lowThreshold);
-                        mailClient.SendEmail(message);
+                        MailClient mailClient = new MailClient();
+                        AlertMail email = SetupBuyEmail(newQuote, lowThreshold);
+                        mailClient.SendEmail(email);
                     }
                     else if (newQuote.MarketPrice >= highThreshold && !(currentQuote >= highThreshold))
                     {
-                        message.SetHighPriceAlert(newQuote, highThreshold);
-                        mailClient.SendEmail(message);
+                        MailClient mailClient = new MailClient();
+                        AlertMail email = SetupSellEmail(newQuote, highThreshold);
+                        mailClient.SendEmail(email);
                     }
 
                     currentQuote = newQuote.MarketPrice;
                 }
+
+                double nextCheck = Math.Max(0, (newQuote.MarkedAt.AddMinutes(2) - DateTime.Now).TotalMilliseconds);
+                Thread.Sleep((int)nextCheck);
             }
+        }
+
+        private static AlertMail SetupSellEmail(StockQuote newQuote, decimal highThreshold)
+        {
+            AlertMail email = SetupEmailEssentials();
+
+            email.SetHighPriceAlert(newQuote, highThreshold);
+
+            return email;
+        }
+
+        private static AlertMail SetupBuyEmail(StockQuote newQuote, decimal lowThreshold)
+        {
+            AlertMail email = SetupEmailEssentials();
+
+            email.SetLowPriceAlert(newQuote, lowThreshold);
+
+            return email;
+        }
+
+        private static AlertMail SetupEmailEssentials()
+        {
+            NameValueCollection mailInfoConfig = System.Configuration.
+                ConfigurationManager.GetSection("mailInfo") as NameValueCollection;
+
+            AlertMail email = new AlertMail();
+            email.SetFrom(
+                mailInfoConfig["fromName"],
+                mailInfoConfig["fromAddress"]
+            );
+            email.SetTo(
+                mailInfoConfig["toName"],
+                mailInfoConfig["toAddress"]
+            );
+            return email;
         }
 
         class ParsedArguments
@@ -65,13 +102,14 @@ namespace StockQuoteAlert
             public string Asset { get; set; }
             public decimal LowThreshold { get; set; }
             public decimal HighThreshold { get; set; }
+            public bool Verbose { get; set; }
         }
 
-        private static ParsedArguments parseArgs(string[] args)
+        private static ParsedArguments ParseArgs(string[] args)
         {
-            if (args.Length != 3)
+            if (args.Length < 3 || args.Length > 4)
             {
-                throw new ArgumentException("Invalid number of arguments. Usage: StockQuoteAlert <asset> <low> <high>");
+                throw new ArgumentException("Invalid number of arguments. Usage: StockQuoteAlert <asset> <low> <high> [verbose]");
             }
 
             decimal lowThreshold, highThreshold;
@@ -92,11 +130,14 @@ namespace StockQuoteAlert
                 throw new ArgumentException("Low and high thresholds must be valid decimal numbers.");
             }
 
+            bool verbose = args.Length == 4 && args[3] == "verbose";
+
             return new ParsedArguments
             {
                 Asset = asset,
                 LowThreshold = lowThreshold,
-                HighThreshold = highThreshold
+                HighThreshold = highThreshold,
+                Verbose = verbose
             };
         }
     }

@@ -17,5 +17,6 @@ namespace StockQuoteAlert.QuoteApi
     public class StockQuoteResponse
     {
         public StockQuoteSeries[] Results { get; set; }
+        public DateTime RequestedAt { get; set; }
     }
 }
