@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+	<configSections>
+		<section name="quoteApi" type="System.Configuration.NameValueSectionHandler" />
+		<section name="mailApi" type="System.Configuration.NameValueSectionHandler" />
+		<section name="mailInfo" type="System.Configuration.NameValueSectionHandler" />
+	</configSections>
+	<startup>
+		<supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.7.2" />
+	</startup>
+	<quoteApi>
+		<add key="baseUrl" value="https://brapi.dev/" />
+		<add key="token" value="[token]" />
+		<add key="endpoint" value="api/v2/stocks/quote" />
+	</quoteApi>
+	<mailApi>
+		<add key="host" value="[smtp host]" />
+		<add key="port" value="[port]" />
+		<add key="username" value="[username]" />
+		<add key="password" value="[password]" />
+	</mailApi>
+	<mailInfo>
+		<add key="fromName" value="[name]" />
+		<add key="fromAddress" value="[email address]" />
+		<add key="toName" value="[name]" />
+		<add key="toAddress" value="[email address]" />
+	</mailInfo>
+	<runtime>
+		<assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+			<dependentAssembly>
+				<assemblyIdentity name="System.Formats.Asn1" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+				<bindingRedirect oldVersion="0.0.0.0-10.0.0.12" newVersion="10.0.0.12" />
+			</dependentAssembly>
+		</assemblyBinding>
+	</runtime>
+</configuration>

@@ -1,5 +1,8 @@
-﻿using StockQuoteAlert.Api;
+﻿using StockQuoteAlert.Mail;
+using StockQuoteAlert.QuoteApi;
 using System;
+using System.Collections.Specialized;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace StockQuoteAlert
@@ -13,16 +16,46 @@ namespace StockQuoteAlert
             decimal lowThreshold = parsedArgs.LowThreshold;
             decimal highThreshold = parsedArgs.HighThreshold;
 
-            Client client = new Client();
-            decimal currentQuote = decimal.MinValue;
+            Console.WriteLine("Monitoring stock quote for asset {0} with thresholds {1} - {2}", 
+                asset, lowThreshold, highThreshold);
+
+            NameValueCollection mailInfoConfig = System.Configuration.
+                ConfigurationManager.GetSection("mailInfo") as NameValueCollection;
+
+            AlertMail message = new AlertMail();
+            message.SetFrom(
+                mailInfoConfig["fromName"],
+                mailInfoConfig["fromAddress"]
+            );
+            message.SetTo(
+                mailInfoConfig["toName"],
+                mailInfoConfig["toAddress"]
+            );
+
+            MailClient mailClient = new MailClient();
+
+            QuoteApiClient client = new QuoteApiClient();
+            decimal? currentQuote = null;
 
             while (true)
             {
-                decimal newQuote = await client.GetStockQuoteAsync(asset);
-                if (newQuote != currentQuote)
+                StockQuote newQuote = await client.GetStockQuoteAsync(asset);
+                if (newQuote.MarketPrice != currentQuote)
                 {
-                    currentQuote = newQuote;
-                    Console.WriteLine(currentQuote);
+                    Console.WriteLine("{0}: {1}", newQuote.MarkedAt, newQuote.MarketPrice);
+
+                    if (newQuote.MarketPrice <= lowThreshold && !(currentQuote <= lowThreshold))
+                    {
+                        message.SetLowPriceAlert(newQuote, lowThreshold);
+                        mailClient.SendEmail(message);
+                    }
+                    else if (newQuote.MarketPrice >= highThreshold && !(currentQuote >= highThreshold))
+                    {
+                        message.SetHighPriceAlert(newQuote, highThreshold);
+                        mailClient.SendEmail(message);
+                    }
+
+                    currentQuote = newQuote.MarketPrice;
                 }
             }
         }

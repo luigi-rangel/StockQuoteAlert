@@ -6,14 +6,14 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-namespace StockQuoteAlert.Api
+namespace StockQuoteAlert.QuoteApi
 {
-    public class Client
+    public class QuoteApiClient
     {
         private readonly HttpClient httpClient;
         private readonly string endpoint;
 
-        public Client()
+        public QuoteApiClient()
         {
             NameValueCollection quoteApiConfig = (NameValueCollection)ConfigurationManager.GetSection("quoteApi");
             string baseUrl = quoteApiConfig["baseUrl"];
@@ -31,15 +31,15 @@ namespace StockQuoteAlert.Api
             this.endpoint = quoteApiConfig["endpoint"];
         }
 
-        public async Task<decimal> GetStockQuoteAsync(string asset)
+        public async Task<StockQuote> GetStockQuoteAsync(string asset)
         {
             string path = $"{this.endpoint}?symbols={asset}";
             HttpResponseMessage response = await this.httpClient.GetAsync(path);
 
             if (response.IsSuccessStatusCode)
             {
-                StockQuote result = await response.Content.ReadFromJsonAsync<StockQuote>();
-                return result.Results[0].Data.RegularMarketPrice;
+                StockQuoteResponse result = await response.Content.ReadFromJsonAsync<StockQuoteResponse>();
+                return StockQuote.FromResult(result);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
