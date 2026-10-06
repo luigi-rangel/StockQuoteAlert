@@ -1,5 +1,4 @@
 ﻿using MailKit.Net.Smtp;
-using MimeKit;
 using System.Collections.Specialized;
 using System.Configuration;
 
@@ -18,9 +17,6 @@ namespace StockQuoteAlert.Mail
             int port = int.Parse(mailApiConfig["port"]);
             string username = mailApiConfig["username"];
             string password = mailApiConfig["password"];
-
-            this.fromName = mailApiConfig["fromName"];
-            this.fromAddress = mailApiConfig["fromAddress"];
 
             this.smtpClient = new SmtpClient();
             this.smtpClient.Connect(host, port, false);

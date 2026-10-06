@@ -2,7 +2,6 @@
 using StockQuoteAlert.QuoteApi;
 using System;
 using System.Collections.Specialized;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace StockQuoteAlert
@@ -55,7 +54,7 @@ namespace StockQuoteAlert
                 currentQuote = newQuote.MarketPrice;
 
                 double nextCheck = Math.Max(0, (newQuote.MarkedAt.AddMinutes(2) - DateTime.Now).TotalMilliseconds);
-                Thread.Sleep((int)nextCheck);
+                await Task.Delay((int)nextCheck);
             }
         }
 
